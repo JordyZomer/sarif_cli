@@ -5,6 +5,8 @@ A SARIF viewer for the command-line.
 Because numerous static analysis tools, such as #CodeQL and #semgrep, use the SARIF format.
 I decided to create a command-line application to display the alerts and learn some more Rust in the process.
 
+At the moment this is WIP and only supports C, it may not work as expected yet.
+
 ## Example
 
 ```bash
@@ -33,3 +35,10 @@ ALERT: "This memcpy has a flexible-array-member as a destination: [call to memcp
 35: 	return bmd;
 36: }
 ```
+
+## Todo
+
+- Test this on real SARIF output
+- Visualize data-flow
+- Add support for more languages
+- Clean up code
