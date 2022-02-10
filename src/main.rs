@@ -20,7 +20,7 @@ struct Alert {
     message: String,
 }
 
-fn parse_alerts(file: &str) -> Vec<Alert> {
+fn parse_alerts(file: &str, source_dir: &str) -> Vec<Alert> {
     let file = File::open(file).unwrap();
     let reader = BufReader::new(file);
 
@@ -46,12 +46,18 @@ fn parse_alerts(file: &str) -> Vec<Alert> {
             let artifact_uri = artifact_uri.to_string();
             let artifact_uri = artifact_uri.replace("file://", "");
             let artifact_uri = artifact_uri.replace("%20", " ");
+            let artifact_uri = format!("{}/{}", source_dir, artifact_uri);
 
             let line_number = &location["physicalLocation"]["region"]["startLine"];
             let line_number = line_number.as_i64().unwrap() as usize;
 
             let column = &location["physicalLocation"]["region"]["startColumn"];
-            let column = column.as_i64().unwrap() as usize;
+
+            let column = if column.is_null() {
+                1
+            } else {
+                column.as_i64().unwrap() as usize
+            };
 
             alerts.push(Alert {
                 file: artifact_uri,
@@ -144,6 +150,10 @@ impl SourceCode {
             return found_node;
         }
 
+        if offset == 1 && node.start_position().row == line_number && node.kind() == "identifier" {
+            return found_node;
+        }
+
         if node.children(&mut node.walk()).len() > 0 {
             for n in node.children(&mut node.walk()) {
                 found_node =
@@ -221,7 +231,7 @@ impl SourceCode {
                     colored_line.push_str(&line[0..node_name_start_index]);
                     colored_line.push_str(&node_name.green().bold().to_string());
                     colored_line.push_str(&line[node_name_end_index..]);
-                    println!("{}: {}", i+1, colored_line);
+                    println!("{}: {}", i + 1, colored_line);
                     println!(
                         "{}",
                         (0..node_name_end_index + node_name_start_index - 2)
@@ -237,7 +247,11 @@ impl SourceCode {
                             .collect::<String>()
                     );
                 } else {
-                    println!("{}: {}", i+1, self.source_code.as_str().lines().nth(i).unwrap());
+                    println!(
+                        "{}: {}",
+                        i + 1,
+                        self.source_code.as_str().lines().nth(i).unwrap()
+                    );
                 }
             }
         }
@@ -246,12 +260,12 @@ impl SourceCode {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        println!("Usage: {} <file_path> [language]", args[0]);
+    if args.len() < 3 {
+        println!("Usage: {} <file_path> <source_dir>", args[0]);
         return;
     }
 
-    let alerts = parse_alerts(args[1].as_str());
+    let alerts = parse_alerts(args[1].as_str(), args[2].as_str());
 
     for alert in alerts {
         let source_code = SourceCode::new(alert.file.as_str());
